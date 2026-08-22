@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="navbar">
+            <h1>Alarm Service</h1>
+            <div class="nav-links">
+                <a href="/dashboard" class="nav-link">Back to Shop</a>
+                <a href="#" id="logoutBtn" class="nav-link">Logout</a>
+                <span id="usernameSpan" style="color: white; margin-left: 10px;"></span>
+            </div>
+        </div>
+
+        <div class="content">
+            <h2>Payment</h2>
+            <div class="payment-card">
+                <h3 id="paymentTitle">Selected product</h3>
+                <p id="paymentDescription"></p>
+                <div class="product-total">Total: <span id="paymentTotal">$0.00</span></div>
+
+                <div class="payment-provider-grid">
+                    <button class="provider-card" data-provider="stripe">
+                        <div class="provider-name">Stripe</div>
+                        <div class="provider-desc">Pay by card</div>
+                    </button>
+                    <button class="provider-card" data-provider="paypal">
+                        <div class="provider-name">PayPal</div>
+                        <div class="provider-desc">Coming soon</div>
+                    </button>
+                </div>
+
+                <div id="paymentMessage" class="message" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        function getParams() {
+            return new URLSearchParams(window.location.search);
+        }
+
+        function formatPrice(value) {
+            return '$' + Number(value).toFixed(2);
+        }
+
+        function normalizeDeviceNumber(value) {
+            return String(value || '').replace(/ /g, '');
+        }
+
+        function validateSerialNum(value) {
+            return /^[0-9a-fA-F]{16}$/.test(value);
+        }
+
+        async function loadPaymentProduct() {
+            const params = getParams();
+            const code = params.get('product');
+            const deviceNumber = normalizeDeviceNumber((params.get('device') || '').trim());
+            const response = await fetch('/api/products');
+            const products = await response.json();
+            const product = products.find(function (item) {
+                return item.code === code;
+            });
+
+            if (!product || product.productType !== 'SUBSCRIPTION' || !validateSerialNum(deviceNumber)) {
+                window.location.href = '/dashboard';
+                return;
+            }
+
+            var total = Number(product.price);
+
+            document.getElementById('paymentTitle').textContent = product.name + ' - ' + product.variant;
+            document.getElementById('paymentDescription').textContent = product.description + ' | Device Number: ' + deviceNumber;
+            document.getElementById('paymentTotal').textContent = formatPrice(total);
+
+            Array.prototype.slice.call(document.querySelectorAll('[data-provider]')).forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var provider = button.getAttribute('data-provider');
+                    var message = document.getElementById('paymentMessage');
+                    if (provider === 'stripe') {
+                        message.style.display = 'block';
+                        message.className = 'message';
+                        message.textContent = 'Redirecting to Stripe...';
+
+                        fetch('/api/payments/stripe/checkout', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                productCode: product.code,
+                                quantity: 1,
+                                deviceNumber: deviceNumber
+                            })
+                        })
+                        .then(function (response) {
+                            return response.json().then(function (body) {
+                                if (!response.ok) {
+                                    throw new Error(body.message || 'Stripe checkout failed');
+                                }
+                                return body;
+                            });
+                        })
+                        .then(function (body) {
+                            sessionStorage.setItem('pendingOrderNumber', body.orderNumber || '');
+                            sessionStorage.setItem('pendingStripeSessionId', body.stripeSessionId || '');
+                            window.location.href = body.checkoutUrl;
+                        })
+                        .catch(function (error) {
+                            message.style.display = 'block';
+                            message.className = 'message error';
+                            message.textContent = error.message;
+                        });
+                        return;
+                    }
+
+                    message.style.display = 'block';
+                    message.className = 'message error';
+                    message.textContent = 'PayPal checkout is not enabled yet.';
+                });
+            });
+        }
+
+        loadPaymentProduct().catch(function () {
+            window.location.href = '/dashboard';
+        });
+    </script>
+</body>
+</html>

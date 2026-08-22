@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Cancelled</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="content">
+            <h2>Payment Cancelled</h2>
+            <p id="cancelText">Your checkout was cancelled.</p>
+            <p id="orderText"></p>
+            <a class="btn btn-secondary" href="/payment">Try Again</a>
+        </div>
+    </div>
+    <script>
+        async function cancelOrder() {
+            var params = new URLSearchParams(window.location.search);
+            var orderNumber = params.get('order') || sessionStorage.getItem('pendingOrderNumber');
+            if (!orderNumber) {
+                document.getElementById('cancelText').textContent = 'Checkout was cancelled.';
+                return;
+            }
+
+            try {
+                var response = await fetch('/api/payments/orders/' + encodeURIComponent(orderNumber) + '/cancel', {
+                    method: 'POST'
+                });
+                var result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.message || 'Cancellation failed');
+                }
+                document.getElementById('cancelText').textContent = 'Order cancelled.';
+                document.getElementById('orderText').textContent = 'Order #' + result.data.orderNumber + ' is ' + result.data.status + '.';
+            } catch (error) {
+                document.getElementById('cancelText').textContent = error.message;
+            }
+        }
+
+        cancelOrder();
+    </script>
+</body>
+</html>

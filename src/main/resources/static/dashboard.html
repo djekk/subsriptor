@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="navbar">
+            <h1>Online Shop</h1>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Home</a>
+                <a href="#" id="logoutBtn" class="nav-link">Logout</a>
+                <span id="usernameSpan" style="color: white; margin-left: 10px;"></span>
+            </div>
+        </div>
+
+        <div class="content">
+            <h2>Welcome, <span id="userDisplay"></span>!</h2>
+            <p>Select one of our products below.</p>
+            <div style="margin: 16px 0;">
+                <label for="deviceNumberInput" style="display:block; margin-bottom:6px; font-weight:600;">Device Number</label>
+                <input id="deviceNumberInput" type="text" placeholder="Enter device number"
+                       style="width:100%; max-width:360px; padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+            </div>
+            <div id="shopArea" class="product-grid">
+                <div class="product-card">
+                    <p>Loading products...</p>
+                </div>
+            </div>
+            <div style="margin-top: 30px;">
+                <button id="logoutDashboardBtn" class="btn btn-secondary">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // Check session and display user info
+        async function checkSession() {
+            try {
+                const response = await fetch('/api/auth/check-session');
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('userDisplay').textContent = result.data || sessionStorage.getItem('username') || 'User';
+                } else {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Session check failed:', error);
+                window.location.href = '/login';
+            }
+        }
+
+        document.getElementById('logoutDashboardBtn').addEventListener('click', logout);
+
+        checkSession();
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function formatPrice(value) {
+            return '$' + Number(value).toFixed(2);
+        }
+
+        function normalizeDeviceNumber(value) {
+            return String(value || '').replace(/ /g, '');
+        }
+
+        function validateSerialNum(value) {
+            return /^[0-9a-fA-F]{16}$/.test(value);
+        }
+
+        function openPayment(productCode, deviceNumber) {
+            var url = '/payment?product=' + encodeURIComponent(productCode);
+            url += '&device=' + encodeURIComponent(deviceNumber);
+            window.location.href = url;
+        }
+
+        async function loadProducts() {
+            const response = await fetch('/api/products');
+            const products = await response.json();
+            const subscriptions = products.filter(function (product) {
+                return product.productType === 'SUBSCRIPTION';
+            });
+
+            const shopArea = document.getElementById('shopArea');
+            if (subscriptions.length === 0) {
+                shopArea.innerHTML = '<div class="product-card"><p>No subscription products available right now.</p></div>';
+                return;
+            }
+
+            shopArea.innerHTML = [
+                '<div class="product-card">',
+                '<h3>Subscription</h3>',
+                '<p>Choose a plan that fits your needs.</p>',
+                '<div class="subscription-options">',
+                subscriptions.map(function (product) {
+                    return [
+                        '<div class="subscription-option">',
+                        '<div class="product-price">' + formatPrice(product.price) + '</div>',
+                        '<div class="subscription-label">' + escapeHtml(product.variant) + '</div>',
+                        '<p class="product-desc">' + escapeHtml(product.description) + '</p>',
+                        '<button class="btn btn-primary product-btn" data-code="' + escapeHtml(product.code) + '">Buy ' + escapeHtml(product.variant) + '</button>',
+                        '</div>'
+                    ].join('');
+                }).join(''),
+                '</div>',
+                '</div>'
+            ].join('');
+
+            Array.prototype.slice.call(document.querySelectorAll('[data-code]')).forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var code = button.getAttribute('data-code');
+                    var deviceInput = document.getElementById('deviceNumberInput');
+                    var deviceNumber = normalizeDeviceNumber(deviceInput ? deviceInput.value.trim() : '');
+                    if (!validateSerialNum(deviceNumber)) {
+                        alert('Device number must be 16 hex characters.');
+                        if (deviceInput) {
+                            deviceInput.focus();
+                        }
+                        return;
+                    }
+                    openPayment(code, deviceNumber);
+                });
+            });
+        }
+
+        loadProducts().catch(function () {
+            document.getElementById('shopArea').innerHTML = '<div class="product-card"><p>Unable to load products.</p></div>';
+        });
+    </script>
+</body>
+</html>
