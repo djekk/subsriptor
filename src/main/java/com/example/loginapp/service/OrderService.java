@@ -77,6 +77,10 @@ public class OrderService {
         return orderRepository.findByOrderNumber(orderNumber);
     }
 
+    public List<Order> findAllOrdersByCreatedAtDesc() {
+        return orderRepository.findAllByOrderByCreatedAtDesc();
+    }
+
     public List<Order> findPaidSubscriptionsByDevice(String deviceNumber) {
         return orderRepository.findByDeviceNumberAndStatusAndProductTypeOrderByCreatedAtDesc(
                 deviceNumber, "PAID", "SUBSCRIPTION"

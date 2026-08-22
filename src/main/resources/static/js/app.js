@@ -9,16 +9,22 @@ async function checkLoginStatus() {
         const result = await response.json();
 
         if (result.success) {
+            const sessionData = result.data && typeof result.data === 'object'
+                ? result.data
+                : { username: result.data, role: 'USER' };
+            const role = sessionData.role || 'USER';
+
             // User is logged in - redirect to dashboard
             if (window.location.pathname === '/') {
-                window.location.href = '/dashboard';
+                window.location.href = role === 'ADMIN' ? '/admin' : '/dashboard';
                 return;
             }
             
             // Show username and logout button on other pages
             const logoutBtn = document.getElementById('logoutBtn');
             const usernameSpan = document.getElementById('usernameSpan');
-            const username = result.data || sessionStorage.getItem('username') || 'User';
+            const adminLink = document.getElementById('adminLink');
+            const username = sessionData.username || sessionStorage.getItem('username') || 'User';
             
             if (logoutBtn) {
                 logoutBtn.style.display = 'inline-block';
@@ -27,6 +33,10 @@ async function checkLoginStatus() {
             if (usernameSpan) {
                 usernameSpan.style.display = 'inline';
                 usernameSpan.textContent = 'Hello, ' + username;
+            }
+
+            if (adminLink) {
+                adminLink.style.display = role === 'ADMIN' ? 'inline' : 'none';
             }
 
             // Add logout functionality

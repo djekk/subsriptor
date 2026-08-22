@@ -12,6 +12,7 @@
             <h1>Online Shop</h1>
             <div class="nav-links">
                 <a href="/" class="nav-link">Home</a>
+                <a href="/admin" id="adminLink" class="nav-link" style="display:none;">Admin</a>
                 <a href="#" id="logoutBtn" class="nav-link">Logout</a>
                 <span id="usernameSpan" style="color: white; margin-left: 10px;"></span>
             </div>
@@ -45,7 +46,14 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    document.getElementById('userDisplay').textContent = result.data || sessionStorage.getItem('username') || 'User';
+                    const sessionData = result.data && typeof result.data === 'object'
+                        ? result.data
+                        : { username: result.data, role: 'USER' };
+                    document.getElementById('userDisplay').textContent = sessionData.username || sessionStorage.getItem('username') || 'User';
+                    const adminLink = document.getElementById('adminLink');
+                    if (adminLink) {
+                        adminLink.style.display = sessionData.role === 'ADMIN' ? 'inline' : 'none';
+                    }
                 } else {
                     window.location.href = '/login';
                 }

@@ -25,6 +25,9 @@ public class User {
     @Column(length = 100)
     private String lastName;
 
+    @Column(nullable = false, length = 20)
+    private String role = "USER";
+
     @Column(columnDefinition = "TINYINT DEFAULT 1")
     private Boolean isActive = true;
 
@@ -41,6 +44,7 @@ public class User {
         this.password = password;
         this.firstName = firstName;
         this.lastName = lastName;
+        this.role = "USER";
         this.isActive = true;
     }
 
@@ -112,6 +116,14 @@ public class User {
         this.isActive = isActive;
     }
 
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -128,4 +140,3 @@ public class User {
         this.updatedAt = updatedAt;
     }
 }
-

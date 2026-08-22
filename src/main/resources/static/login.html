@@ -70,7 +70,7 @@
                     messageDiv.className = 'message success';
                     messageDiv.textContent = result.message;
                     setTimeout(() => {
-                        window.location.href = '/dashboard';
+                        window.location.href = result.data.role === 'ADMIN' ? '/admin' : '/dashboard';
                     }, 1500);
                 } else {
                     messageDiv.className = 'message error';

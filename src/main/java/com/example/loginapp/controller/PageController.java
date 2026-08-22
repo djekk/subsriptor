@@ -26,6 +26,11 @@ public class PageController {
         return "dashboard.html";
     }
 
+    @GetMapping("/admin")
+    public String admin() {
+        return "admin.html";
+    }
+
     @GetMapping("/payment")
     public String payment() {
         return "payment.html";

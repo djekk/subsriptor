@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -52,6 +54,7 @@ public class AuthController {
             if (user.isPresent()) {
                 session.setAttribute("userId", user.get().getId());
                 session.setAttribute("username", user.get().getUsername());
+                session.setAttribute("role", user.get().getRole());
                 return ResponseEntity.ok(new ApiResponse(true, "Login successful", user.get()));
             }
 
@@ -73,9 +76,14 @@ public class AuthController {
     public ResponseEntity<ApiResponse> checkSession(HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
         String username = (String) session.getAttribute("username");
+        String role = (String) session.getAttribute("role");
 
-        if (userId != null && username != null) {
-            return ResponseEntity.ok(new ApiResponse(true, "Session active", username));
+        if (userId != null && username != null && role != null) {
+            Map<String, Object> sessionData = new HashMap<String, Object>();
+            sessionData.put("userId", userId);
+            sessionData.put("username", username);
+            sessionData.put("role", role);
+            return ResponseEntity.ok(new ApiResponse(true, "Session active", sessionData));
         }
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)

@@ -11,6 +11,7 @@ import java.util.Optional;
 public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByOrderNumber(String orderNumber);
     Optional<Order> findByStripeSessionId(String stripeSessionId);
+    List<Order> findAllByOrderByCreatedAtDesc();
     List<Order> findByDeviceNumberAndStatusAndProductTypeOrderByCreatedAtDesc(
             String deviceNumber, String status, String productType);
 }
