@@ -7,6 +7,7 @@ import com.example.loginapp.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -74,6 +75,12 @@ public class OrderService {
 
     public Optional<Order> findByOrderNumber(String orderNumber) {
         return orderRepository.findByOrderNumber(orderNumber);
+    }
+
+    public List<Order> findPaidSubscriptionsByDevice(String deviceNumber) {
+        return orderRepository.findByDeviceNumberAndStatusAndProductTypeOrderByCreatedAtDesc(
+                deviceNumber, "PAID", "SUBSCRIPTION"
+        );
     }
 
     public OrderSummary toSummary(Order order) {

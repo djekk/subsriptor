@@ -21,6 +21,8 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -72,6 +74,27 @@ public class StripePaymentService {
         String deviceNumber = normalizeDeviceNumber(request.getDeviceNumber());
         if (!validateSerialNum(deviceNumber)) {
             throw new IllegalArgumentException("Device number must be 16 hex characters");
+        }
+
+        int subscriptionMonths = resolveSubscriptionMonths(product.getCode());
+        if (subscriptionMonths > 0) {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime maxExpiry = null;
+            for (Order paidOrder : orderService.findPaidSubscriptionsByDevice(deviceNumber)) {
+                int paidMonths = resolveSubscriptionMonths(paidOrder.getProductCode());
+                if (paidMonths <= 0 || paidOrder.getCreatedAt() == null) {
+                    continue;
+                }
+                LocalDateTime expiresAt = paidOrder.getCreatedAt().plusMonths(paidMonths);
+                if (maxExpiry == null || expiresAt.isAfter(maxExpiry)) {
+                    maxExpiry = expiresAt;
+                }
+            }
+            LocalDateTime repurchaseAllowedAt = now.plusMonths(1);
+            if (maxExpiry != null && maxExpiry.isAfter(repurchaseAllowedAt)) {
+                String expiresAt = maxExpiry.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                throw new IllegalStateException("An active subscription already exists for this device until " + expiresAt);
+            }
         }
 
         long quantity = request.getQuantity() == null || request.getQuantity() < 1 ? 1 : request.getQuantity();
@@ -249,6 +272,16 @@ public class StripePaymentService {
             }
         }
         return true;
+    }
+
+    private int resolveSubscriptionMonths(String productCode) {
+        if ("SUBSCRIPTION_6M".equalsIgnoreCase(productCode)) {
+            return 6;
+        }
+        if ("SUBSCRIPTION_1Y".equalsIgnoreCase(productCode)) {
+            return 12;
+        }
+        return 0;
     }
 
     private void verifyWebhookSignature(String payload, String signatureHeader) throws Exception {
