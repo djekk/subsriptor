@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import javax.crypto.Cipher;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.BufferedReader;
@@ -19,13 +20,15 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,6 +36,9 @@ import java.util.regex.Pattern;
 public class StripePaymentService {
     private static final long WEBHOOK_TOLERANCE_SECONDS = 300;
     private static final int SERIAL_LEN = 16;
+    private static final int PROTOCOL_DEVICE_TOKEN_LEN = 32;
+    private static final int BINARY_SERIAL_LEN = 8;
+    public static final String EMPTY_SUBSCRIPTION_STATUS = "00000000000000000000000000000000";
 
     private final ProductRepository productRepository;
     private final OrderService orderService;
@@ -50,6 +56,12 @@ public class StripePaymentService {
     @Value("${stripe.cancel-url}")
     private String cancelUrl;
 
+    @Value("${subscription-check.request-aes-key}")
+    private String subscriptionCheckRequestAesKey;
+
+    @Value("${subscription-check.response-aes-key}")
+    private String subscriptionCheckResponseAesKey;
+
     public StripePaymentService(ProductRepository productRepository, OrderService orderService, ObjectMapper objectMapper) {
         this.productRepository = productRepository;
         this.orderService = orderService;
@@ -58,6 +70,8 @@ public class StripePaymentService {
 
     @PostConstruct
     public void init() {
+        validateAesKey(subscriptionCheckRequestAesKey, "subscription-check.request-aes-key");
+        validateAesKey(subscriptionCheckResponseAesKey, "subscription-check.response-aes-key");
     }
 
     public CheckoutResult createCheckoutSession(StripeCheckoutRequest request, Long userId, String username) throws Exception {
@@ -121,34 +135,19 @@ public class StripePaymentService {
         return productRepository.findByActiveTrueOrderBySortOrderAsc();
     }
 
-    public SubscriptionCheckResult checkSubscriptionByDevice(String rawDeviceNumber) {
-        String deviceNumber = normalizeDeviceNumber(rawDeviceNumber);
-        if (!validateSerialNum(deviceNumber)) {
-            throw new IllegalArgumentException("Device number must be 16 hex characters");
+    public SubscriptionProtocolResponse checkSubscriptionByDevice(String rawDeviceNumber) {
+        String deviceNumber = resolveSubscriptionCheckDeviceNumber(rawDeviceNumber);
+        Order latestPaidSubscription = findLatestPaidSubscription(deviceNumber);
+        if (latestPaidSubscription == null) {
+            return SubscriptionProtocolResponse.notFound(deviceNumber);
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime maxExpiry = null;
-        for (Order paidOrder : orderService.findPaidSubscriptionsByDevice(deviceNumber)) {
-            int paidMonths = resolveSubscriptionMonths(paidOrder.getProductCode());
-            if (paidMonths <= 0 || paidOrder.getCreatedAt() == null) {
-                continue;
-            }
-            LocalDateTime expiresAt = paidOrder.getCreatedAt().plusMonths(paidMonths);
-            if (maxExpiry == null || expiresAt.isAfter(maxExpiry)) {
-                maxExpiry = expiresAt;
-            }
-        }
-
-        boolean active = maxExpiry != null && maxExpiry.isAfter(now);
-        boolean canBuyNow = maxExpiry == null || !maxExpiry.isAfter(now.plusMonths(1));
-        Long daysUntilExpiry = maxExpiry == null ? null : ChronoUnit.DAYS.between(now, maxExpiry);
-        String expiresAt = maxExpiry == null ? null : maxExpiry.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        String canBuyAt = maxExpiry == null
-                ? now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                : maxExpiry.minusMonths(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-
-        return new SubscriptionCheckResult(deviceNumber, active, canBuyNow, expiresAt, canBuyAt, daysUntilExpiry);
+        LocalDateTime createdAt = latestPaidSubscription.getCreatedAt();
+        LocalDateTime expiresAt = createdAt.plusMonths(resolveSubscriptionMonths(latestPaidSubscription.getProductCode()));
+        long createdAtUnix = toUnixTime(createdAt);
+        long expiresAtUnix = toUnixTime(expiresAt);
+        String encryptedStatus = encryptSubscriptionPayload(deviceNumber, createdAtUnix, expiresAtUnix);
+        return SubscriptionProtocolResponse.found(deviceNumber, encryptedStatus);
     }
 
     public Order confirmStripeSession(String stripeSessionId) throws IOException {
@@ -293,16 +292,31 @@ public class StripePaymentService {
         return deviceNumber.trim().replace(" ", "");
     }
 
+    String resolveSubscriptionCheckDeviceNumber(String rawDeviceNumber) {
+        String normalizedDeviceNumber = normalizeDeviceNumber(rawDeviceNumber).toUpperCase(Locale.ROOT);
+        if (validateSerialNum(normalizedDeviceNumber)) {
+            return normalizedDeviceNumber;
+        }
+        if (normalizedDeviceNumber.length() != PROTOCOL_DEVICE_TOKEN_LEN || !isHex(normalizedDeviceNumber)) {
+            throw new IllegalArgumentException("Device number must be 16 hex characters or a 32-hex encrypted token");
+        }
+
+        byte[] decryptedToken = decryptAesEcb(hexToBytes(normalizedDeviceNumber), subscriptionCheckRequestAesKey);
+        byte[] deviceBytes = new byte[BINARY_SERIAL_LEN];
+        byte[] repeatedBytes = new byte[BINARY_SERIAL_LEN];
+        System.arraycopy(decryptedToken, 0, deviceBytes, 0, BINARY_SERIAL_LEN);
+        System.arraycopy(decryptedToken, BINARY_SERIAL_LEN, repeatedBytes, 0, BINARY_SERIAL_LEN);
+        if (!MessageDigest.isEqual(deviceBytes, repeatedBytes)) {
+            throw new IllegalArgumentException("Encrypted device token is invalid");
+        }
+        return bytesToHex(deviceBytes);
+    }
+
     private boolean validateSerialNum(String serial) {
         if (serial.length() != SERIAL_LEN) {
             return false;
         }
-        for (int i = 0; i < SERIAL_LEN; i++) {
-            if (Character.digit(serial.charAt(i), 16) == -1) {
-                return false;
-            }
-        }
-        return true;
+        return isHex(serial);
     }
 
     private int resolveSubscriptionMonths(String productCode) {
@@ -373,6 +387,93 @@ public class StripePaymentService {
         return hex.toString();
     }
 
+    String encryptSubscriptionPayload(String deviceNumber, long createdAtUnix, long expiresAtUnix) {
+        if (!validateSerialNum(deviceNumber)) {
+            throw new IllegalArgumentException("Device number must be 16 hex characters");
+        }
+
+        ByteBuffer payload = ByteBuffer.allocate(16);
+        payload.put(hexToBytes(deviceNumber));
+        payload.putInt((int) createdAtUnix);
+        payload.putInt((int) expiresAtUnix);
+        return bytesToHex(encryptAesEcb(payload.array(), subscriptionCheckResponseAesKey));
+    }
+
+    private Order findLatestPaidSubscription(String deviceNumber) {
+        Order latestPaidSubscription = null;
+        LocalDateTime latestExpiry = null;
+        for (Order paidOrder : orderService.findPaidSubscriptionsByDevice(deviceNumber)) {
+            int paidMonths = resolveSubscriptionMonths(paidOrder.getProductCode());
+            if (paidMonths <= 0 || paidOrder.getCreatedAt() == null) {
+                continue;
+            }
+
+            LocalDateTime expiresAt = paidOrder.getCreatedAt().plusMonths(paidMonths);
+            if (latestExpiry == null || expiresAt.isAfter(latestExpiry)) {
+                latestExpiry = expiresAt;
+                latestPaidSubscription = paidOrder;
+            }
+        }
+        return latestPaidSubscription;
+    }
+
+    private long toUnixTime(LocalDateTime dateTime) {
+        return dateTime.atZone(ZoneId.systemDefault()).toEpochSecond();
+    }
+
+    private void validateAesKey(String key, String propertyName) {
+        String normalizedKey = normalizeDeviceNumber(key).toUpperCase(Locale.ROOT);
+        if (normalizedKey.length() != PROTOCOL_DEVICE_TOKEN_LEN || !isHex(normalizedKey)) {
+            throw new IllegalStateException(propertyName + " must be a 32-character hex AES-128 key");
+        }
+    }
+
+    private boolean isHex(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            if (Character.digit(value.charAt(i), 16) == -1) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private byte[] encryptAesEcb(byte[] payload, String hexKey) {
+        return doAesEcb(payload, hexKey, Cipher.ENCRYPT_MODE);
+    }
+
+    private byte[] decryptAesEcb(byte[] payload, String hexKey) {
+        return doAesEcb(payload, hexKey, Cipher.DECRYPT_MODE);
+    }
+
+    private byte[] doAesEcb(byte[] payload, String hexKey, int cipherMode) {
+        try {
+            Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
+            cipher.init(cipherMode, new SecretKeySpec(hexToBytes(hexKey), "AES"));
+            return cipher.doFinal(payload);
+        } catch (Exception e) {
+            throw new IllegalStateException("Unable to process subscription AES payload", e);
+        }
+    }
+
+    private byte[] hexToBytes(String value) {
+        int length = value.length();
+        byte[] bytes = new byte[length / 2];
+        for (int i = 0; i < length; i += 2) {
+            int high = Character.digit(value.charAt(i), 16);
+            int low = Character.digit(value.charAt(i + 1), 16);
+            bytes[i / 2] = (byte) ((high << 4) + low);
+        }
+        return bytes;
+    }
+
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder hex = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            hex.append(String.format("%02X", b & 0xFF));
+        }
+        return hex.toString();
+    }
+
     public static class CheckoutResult {
         private final String checkoutUrl;
         private final String orderNumber;
@@ -397,45 +498,35 @@ public class StripePaymentService {
         }
     }
 
-    public static class SubscriptionCheckResult {
+    public static class SubscriptionProtocolResponse {
         private final String deviceNumber;
-        private final boolean active;
-        private final boolean canBuyNow;
-        private final String expiresAt;
-        private final String canBuyAt;
-        private final Long daysUntilExpiry;
+        private final boolean found;
+        private final String payload;
 
-        public SubscriptionCheckResult(String deviceNumber, boolean active, boolean canBuyNow, String expiresAt, String canBuyAt, Long daysUntilExpiry) {
+        private SubscriptionProtocolResponse(String deviceNumber, boolean found, String payload) {
             this.deviceNumber = deviceNumber;
-            this.active = active;
-            this.canBuyNow = canBuyNow;
-            this.expiresAt = expiresAt;
-            this.canBuyAt = canBuyAt;
-            this.daysUntilExpiry = daysUntilExpiry;
+            this.found = found;
+            this.payload = payload;
+        }
+
+        public static SubscriptionProtocolResponse found(String deviceNumber, String payload) {
+            return new SubscriptionProtocolResponse(deviceNumber, true, payload);
+        }
+
+        public static SubscriptionProtocolResponse notFound(String deviceNumber) {
+            return new SubscriptionProtocolResponse(deviceNumber, false, EMPTY_SUBSCRIPTION_STATUS);
         }
 
         public String getDeviceNumber() {
             return deviceNumber;
         }
 
-        public boolean isActive() {
-            return active;
+        public boolean isFound() {
+            return found;
         }
 
-        public boolean isCanBuyNow() {
-            return canBuyNow;
-        }
-
-        public String getExpiresAt() {
-            return expiresAt;
-        }
-
-        public String getCanBuyAt() {
-            return canBuyAt;
-        }
-
-        public Long getDaysUntilExpiry() {
-            return daysUntilExpiry;
+        public String getPayload() {
+            return payload;
         }
     }
 }

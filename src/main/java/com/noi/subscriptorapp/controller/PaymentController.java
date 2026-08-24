@@ -6,6 +6,7 @@ import com.noi.subscriptorapp.dto.StripeCheckoutResponse;
 import com.noi.subscriptorapp.model.Order;
 import com.noi.subscriptorapp.service.StripePaymentService;
 import com.noi.subscriptorapp.service.OrderService;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -99,25 +100,33 @@ public class PaymentController {
                         .body(new ApiResponse(false, "Order not found")));
     }
 
-    @GetMapping("/subscriptions/check")
-    public ResponseEntity<?> checkSubscriptionByDevice(
+    @GetMapping(value = "/subscriptions/check", produces = MediaType.TEXT_PLAIN_VALUE)
+    public ResponseEntity<String> checkSubscriptionByDevice(
             @RequestParam("deviceNumber") String deviceNumber,
             HttpServletRequest request) {
         try {
             String rateKey = request.getRemoteAddr();
             if (isRateLimited(rateKey)) {
                 return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                        .body(new ApiResponse(false, "Too many requests. Please try again in a few seconds."));
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .body("error:" + StripePaymentService.EMPTY_SUBSCRIPTION_STATUS);
             }
 
-            StripePaymentService.SubscriptionCheckResult result = stripePaymentService.checkSubscriptionByDevice(deviceNumber);
-            return ResponseEntity.ok(new ApiResponse(true, "Subscription status loaded", result));
+            StripePaymentService.SubscriptionProtocolResponse result = stripePaymentService.checkSubscriptionByDevice(deviceNumber);
+            String responseBody = result.isFound()
+                    ? "success:" + result.getPayload()
+                    : "error:" + StripePaymentService.EMPTY_SUBSCRIPTION_STATUS;
+            return ResponseEntity.ok()
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body(responseBody);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ApiResponse(false, e.getMessage()));
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body("error:" + StripePaymentService.EMPTY_SUBSCRIPTION_STATUS);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse(false, "Unable to check subscription: " + e.getMessage()));
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body("error:" + StripePaymentService.EMPTY_SUBSCRIPTION_STATUS);
         }
     }
 

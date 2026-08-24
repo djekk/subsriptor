@@ -24,6 +24,10 @@ stripe:
   success-url: ${SUBSCRIPTOR_HOST:}/payment/success?session_id={CHECKOUT_SESSION_ID}
   cancel-url: ${SUBSCRIPTOR_HOST:}/payment/cancel
 
+subscription-check:
+  request-aes-key: ${SUBSCRIPTION_CHECK_REQUEST_AES_KEY:1CFA7B20EE3D9B48227DBAA6739AE044}
+  response-aes-key: ${SUBSCRIPTION_CHECK_RESPONSE_AES_KEY:DE0216CEF066E18B5AC877A43E982EF6}
+
 logging:
   level:
     root: WARN
