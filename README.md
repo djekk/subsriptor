@@ -109,7 +109,7 @@ mvn spring-boot:run
 
 Or run the JAR file:
 ```bash
-java -jar target/login-app-1.0.0.jar
+java -jar target/subscriptor-1.0.0.jar
 ```
 
 The application will start at `http://localhost:8080`
@@ -227,7 +227,7 @@ To deploy on Apache with mod_proxy:
 
 1. Build the project: `mvn clean package`
 2. Copy the JAR to a deployment directory
-3. Run the JAR: `java -jar login-app-1.0.0.jar`
+3. Run the JAR: `java -jar subscriptor-1.0.0.jar`
 4. Configure Apache virtual host:
 
 ```apache
@@ -238,8 +238,8 @@ To deploy on Apache with mod_proxy:
     ProxyPass / http://localhost:8080/
     ProxyPassReverse / http://localhost:8080/
     
-    ErrorLog ${APACHE_LOG_DIR}/login-app-error.log
-    CustomLog ${APACHE_LOG_DIR}/login-app-access.log combined
+    ErrorLog ${APACHE_LOG_DIR}/subscriptor-error.log
+    CustomLog ${APACHE_LOG_DIR}/subscriptor-access.log combined
 </VirtualHost>
 ```
 

@@ -49,7 +49,7 @@ datasource:
 
 ```batch
 cd c:\Users\ezaporozhets\Documents\noi2
-java -jar target/login-app-1.0.0.jar
+java -jar target/subscriptor-1.0.0.jar
 ```
 
 **Or use Maven:**
@@ -109,7 +109,7 @@ server:
 
 ## 📂 Project Files Location
 
-- **Application JAR**: `c:\Users\ezaporozhets\Documents\noi2\target\login-app-1.0.0.jar`
+- **Application JAR**: `c:\Users\ezaporozhets\Documents\noi2\target\subscriptor-1.0.0.jar`
 - **Source Code**: `c:\Users\ezaporozhets\Documents\noi2\src\main\java\com\example\loginapp\`
 - **Frontend**: `c:\Users\ezaporozhets\Documents\noi2\src\main\resources\static\`
 - **Database Schema**: `c:\Users\ezaporozhets\Documents\noi2\database.sql`

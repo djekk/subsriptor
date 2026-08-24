@@ -59,6 +59,13 @@
         }
 
         async function loadPaymentProduct() {
+            const sessionResponse = await fetch('/api/auth/check-session');
+            const sessionResult = await sessionResponse.json();
+            if (!sessionResponse.ok || !sessionResult.success) {
+                window.location.href = '/login';
+                return;
+            }
+
             const params = getParams();
             const code = params.get('product');
             const deviceNumber = normalizeDeviceNumber((params.get('device') || '').trim());

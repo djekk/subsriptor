@@ -1,6 +1,6 @@
 spring:
   application:
-    name: login-app
+    name: subscriptor
   datasource:
     url: jdbc:mysql://localhost:3306/login_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: root
@@ -13,7 +13,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
-        format_sql: trueecho $env:STRIPE_WEBHOOK_SECRET
+        format_sql: true
 
 server:
   port: 8080
@@ -21,11 +21,11 @@ server:
 stripe:
   secret-key: ${STRIPE_SECRET_KEY:}
   webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
-  success-url: http://localhost:8080/payment/success?session_id={CHECKOUT_SESSION_ID}
-  cancel-url: http://localhost:8080/payment/cancel
+  success-url: ${SUBSCRIPTOR_HOST:}/payment/success?session_id={CHECKOUT_SESSION_ID}
+  cancel-url: ${SUBSCRIPTOR_HOST:}/payment/cancel
 
 logging:
   level:
     root: WARN
-    com.example: INFO
+    com.application: INFO
     org.hibernate: WARN

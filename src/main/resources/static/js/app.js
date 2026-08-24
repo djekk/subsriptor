@@ -19,6 +19,11 @@ async function checkLoginStatus() {
                 window.location.href = role === 'ADMIN' ? '/admin' : '/dashboard';
                 return;
             }
+
+            if (window.location.pathname === '/payment' && role !== 'USER' && role !== 'ADMIN') {
+                window.location.href = '/login';
+                return;
+            }
             
             // Show username and logout button on other pages
             const logoutBtn = document.getElementById('logoutBtn');
@@ -45,6 +50,10 @@ async function checkLoginStatus() {
             }
         }
     } catch (error) {
+        if (window.location.pathname === '/payment') {
+            window.location.href = '/login';
+            return;
+        }
         console.log('User not logged in');
     }
 }
