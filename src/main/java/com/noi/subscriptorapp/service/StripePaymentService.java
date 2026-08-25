@@ -42,6 +42,7 @@ public class StripePaymentService {
 
     private final ProductRepository productRepository;
     private final OrderService orderService;
+    private final OrderConfirmationEmailService orderConfirmationEmailService;
     private final ObjectMapper objectMapper;
 
     @Value("${stripe.secret-key:}")
@@ -62,9 +63,14 @@ public class StripePaymentService {
     @Value("${subscription-check.response-aes-key}")
     private String subscriptionCheckResponseAesKey;
 
-    public StripePaymentService(ProductRepository productRepository, OrderService orderService, ObjectMapper objectMapper) {
+    public StripePaymentService(
+            ProductRepository productRepository,
+            OrderService orderService,
+            OrderConfirmationEmailService orderConfirmationEmailService,
+            ObjectMapper objectMapper) {
         this.productRepository = productRepository;
         this.orderService = orderService;
+        this.orderConfirmationEmailService = orderConfirmationEmailService;
         this.objectMapper = objectMapper;
     }
 
@@ -156,7 +162,12 @@ public class StripePaymentService {
         Order order = orderService.findByStripeSessionId(stripeSessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found for Stripe session"));
         if ("paid".equalsIgnoreCase(paymentStatus)) {
-            return orderService.markPaidByStripeSession(stripeSessionId, paymentStatus);
+            boolean newlyPaid = !"PAID".equalsIgnoreCase(order.getStatus());
+            Order paidOrder = orderService.markPaidByStripeSession(stripeSessionId, paymentStatus);
+            if (newlyPaid) {
+                orderConfirmationEmailService.sendOrderConfirmation(paidOrder);
+            }
+            return paidOrder;
         }
         order.setStripePaymentStatus(paymentStatus);
         return order;
@@ -184,7 +195,13 @@ public class StripePaymentService {
             String sessionId = session.path("id").asText(null);
             String paymentStatus = session.path("payment_status").asText("");
             if (sessionId != null && "paid".equalsIgnoreCase(paymentStatus)) {
-                orderService.markPaidByStripeSession(sessionId, paymentStatus);
+                Order order = orderService.findByStripeSessionId(sessionId)
+                        .orElseThrow(() -> new IllegalArgumentException("Order not found for Stripe session"));
+                boolean newlyPaid = !"PAID".equalsIgnoreCase(order.getStatus());
+                Order paidOrder = orderService.markPaidByStripeSession(sessionId, paymentStatus);
+                if (newlyPaid) {
+                    orderConfirmationEmailService.sendOrderConfirmation(paidOrder);
+                }
             }
         }
     }

@@ -26,13 +26,15 @@ class StripePaymentServiceTest {
     private static final String RESPONSE_KEY = "DE0216CEF066E18B5AC877A43E982EF6";
 
     private OrderService orderService;
+    private OrderConfirmationEmailService orderConfirmationEmailService;
     private StripePaymentService stripePaymentService;
 
     @BeforeEach
     void setUp() {
         ProductRepository productRepository = mock(ProductRepository.class);
         orderService = mock(OrderService.class);
-        stripePaymentService = new StripePaymentService(productRepository, orderService, new ObjectMapper());
+        orderConfirmationEmailService = mock(OrderConfirmationEmailService.class);
+        stripePaymentService = new StripePaymentService(productRepository, orderService, orderConfirmationEmailService, new ObjectMapper());
         ReflectionTestUtils.setField(stripePaymentService, "subscriptionCheckRequestAesKey", REQUEST_KEY);
         ReflectionTestUtils.setField(stripePaymentService, "subscriptionCheckResponseAesKey", RESPONSE_KEY);
         stripePaymentService.init();

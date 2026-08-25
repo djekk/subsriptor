@@ -100,6 +100,19 @@ Or, if you prefer to run without packaging:
 mvn clean install
 ```
 
+### Order confirmation emails (optional)
+
+To send an email receipt after successful payment, configure SMTP and enable confirmation emails:
+
+```bash
+set ORDER_CONFIRMATION_EMAIL_ENABLED=true
+set ORDER_CONFIRMATION_EMAIL_FROM=no-reply@yourdomain.com
+set MAIL_HOST=smtp.yourprovider.com
+set MAIL_PORT=587
+set MAIL_USERNAME=your-smtp-user
+set MAIL_PASSWORD=your-smtp-password
+```
+
 ### 4. Run the Application
 
 Using Maven:
