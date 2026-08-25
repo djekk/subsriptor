@@ -311,6 +311,7 @@ body {
 
 .subscription-options {
     display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 16px;
 }
 
@@ -361,5 +362,9 @@ body {
 
     .content {
         padding: 40px 20px;
+    }
+
+    .subscription-options {
+        grid-template-columns: 1fr;
     }
 }
