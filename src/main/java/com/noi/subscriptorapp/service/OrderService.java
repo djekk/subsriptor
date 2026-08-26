@@ -7,9 +7,12 @@ import com.noi.subscriptorapp.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class OrderService {
@@ -50,6 +53,7 @@ public class OrderService {
         order.setStatus("PAID");
         order.setStripePaymentStatus(stripePaymentStatus);
         order.setFailureReason(null);
+        order.setExpiresAt(calculateExpiresAt(order));
         return orderRepository.save(order);
     }
 
@@ -99,5 +103,33 @@ public class OrderService {
                 order.getStripeSessionId(),
                 order.getPaymentProvider()
         );
+    }
+
+    private LocalDateTime calculateExpiresAt(Order order) {
+        if (order == null || order.getCreatedAt() == null || !"SUBSCRIPTION".equalsIgnoreCase(order.getProductType())) {
+            return null;
+        }
+
+        int months = resolveSubscriptionMonths(order.getProductCode());
+        if (months <= 0) {
+            return null;
+        }
+
+        return order.getCreatedAt().plusMonths(months);
+    }
+
+    static int resolveSubscriptionMonths(String productCode) {
+        if (productCode == null || productCode.trim().isEmpty()) {
+            return 0;
+        }
+
+        Matcher matcher = Pattern.compile("(?i)^SUBSCRIPTION_(\\d+)([MY])$").matcher(productCode.trim());
+        if (!matcher.matches()) {
+            return 0;
+        }
+
+        int amount = Integer.parseInt(matcher.group(1));
+        String unit = matcher.group(2).toUpperCase();
+        return "Y".equals(unit) ? amount * 12 : amount;
     }
 }

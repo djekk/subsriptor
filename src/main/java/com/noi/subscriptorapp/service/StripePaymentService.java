@@ -97,16 +97,15 @@ public class StripePaymentService {
             throw new IllegalArgumentException("Device number must be 16 hex characters");
         }
 
-        int subscriptionMonths = resolveSubscriptionMonths(product.getCode());
+        int subscriptionMonths = OrderService.resolveSubscriptionMonths(product.getCode());
         if (subscriptionMonths > 0) {
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime maxExpiry = null;
             for (Order paidOrder : orderService.findPaidSubscriptionsByDevice(deviceNumber)) {
-                int paidMonths = resolveSubscriptionMonths(paidOrder.getProductCode());
-                if (paidMonths <= 0 || paidOrder.getCreatedAt() == null) {
+                LocalDateTime expiresAt = getOrderExpiresAt(paidOrder);
+                if (expiresAt == null) {
                     continue;
                 }
-                LocalDateTime expiresAt = paidOrder.getCreatedAt().plusMonths(paidMonths);
                 if (maxExpiry == null || expiresAt.isAfter(maxExpiry)) {
                     maxExpiry = expiresAt;
                 }
@@ -149,7 +148,10 @@ public class StripePaymentService {
         }
 
         LocalDateTime createdAt = latestPaidSubscription.getCreatedAt();
-        LocalDateTime expiresAt = createdAt.plusMonths(resolveSubscriptionMonths(latestPaidSubscription.getProductCode()));
+        LocalDateTime expiresAt = getOrderExpiresAt(latestPaidSubscription);
+        if (expiresAt == null) {
+            return SubscriptionProtocolResponse.notFound(deviceNumber);
+        }
         long createdAtUnix = toUnixTime(createdAt);
         long expiresAtUnix = toUnixTime(expiresAt);
         String encryptedStatus = encryptSubscriptionPayload(deviceNumber, createdAtUnix, expiresAtUnix);
@@ -336,22 +338,6 @@ public class StripePaymentService {
         return isHex(serial);
     }
 
-    private int resolveSubscriptionMonths(String productCode) {
-        if (productCode == null || productCode.trim().isEmpty()) {
-            return 0;
-        }
-
-        String normalizedCode = productCode.trim();
-        Matcher matcher = Pattern.compile("(?i)^SUBSCRIPTION_(\\d+)([MY])$").matcher(normalizedCode);
-        if (!matcher.matches()) {
-            return 0;
-        }
-
-        int amount = Integer.parseInt(matcher.group(1));
-        String unit = matcher.group(2).toUpperCase(Locale.ROOT);
-        return "Y".equals(unit) ? amount * 12 : amount;
-    }
-
     private void verifyWebhookSignature(String payload, String signatureHeader) throws Exception {
         String[] parts = signatureHeader.split(",");
         String timestamp = null;
@@ -426,18 +412,28 @@ public class StripePaymentService {
         Order latestPaidSubscription = null;
         LocalDateTime latestExpiry = null;
         for (Order paidOrder : orderService.findPaidSubscriptionsByDevice(deviceNumber)) {
-            int paidMonths = resolveSubscriptionMonths(paidOrder.getProductCode());
-            if (paidMonths <= 0 || paidOrder.getCreatedAt() == null) {
+            LocalDateTime expiresAt = getOrderExpiresAt(paidOrder);
+            if (expiresAt == null) {
                 continue;
             }
-
-            LocalDateTime expiresAt = paidOrder.getCreatedAt().plusMonths(paidMonths);
             if (latestExpiry == null || expiresAt.isAfter(latestExpiry)) {
                 latestExpiry = expiresAt;
                 latestPaidSubscription = paidOrder;
             }
         }
         return latestPaidSubscription;
+    }
+
+    private LocalDateTime getOrderExpiresAt(Order order) {
+        if (order.getExpiresAt() != null) {
+            return order.getExpiresAt();
+        }
+        // fallback for old orders that predate the expires_at column
+        if (order.getCreatedAt() == null) {
+            return null;
+        }
+        int months = OrderService.resolveSubscriptionMonths(order.getProductCode());
+        return months > 0 ? order.getCreatedAt().plusMonths(months) : null;
     }
 
     private long toUnixTime(LocalDateTime dateTime) {

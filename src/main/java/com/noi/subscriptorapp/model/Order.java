@@ -59,6 +59,9 @@ public class Order {
     @Column(name = "failure_reason", length = 255)
     private String failureReason;
 
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
@@ -211,6 +214,14 @@ public class Order {
 
     public void setFailureReason(String failureReason) {
         this.failureReason = failureReason;
+    }
+
+    public LocalDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(LocalDateTime expiresAt) {
+        this.expiresAt = expiresAt;
     }
 
     public LocalDateTime getCreatedAt() {

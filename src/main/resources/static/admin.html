@@ -133,7 +133,30 @@
         </div>
 
         <div class="content">
-            <h2>Products</h2>
+            <h2>Orders</h2>
+            <div id="adminMessage" class="message" style="display:none;"></div>
+            <div class="orders-wrap">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>User</th>
+                            <th>Device</th>
+                            <th>Product</th>
+                            <th>Status</th>
+                            <th>Total</th>
+                            <th>Provider</th>
+                            <th>Created</th>
+                            <th>Expires At</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersBody">
+                        <tr><td colspan="9">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 style="margin-top: 32px;">Products</h2>
             <div id="productMessage" class="message" style="display:none;"></div>
             <form id="productForm" class="product-form">
                 <input type="hidden" id="productId" name="productId">
@@ -197,28 +220,6 @@
                     </thead>
                     <tbody id="productsBody">
                         <tr><td colspan="9">Loading...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <h2 style="margin-top: 32px;">Orders</h2>
-            <div id="adminMessage" class="message" style="display:none;"></div>
-            <div class="orders-wrap">
-                <table class="orders-table">
-                    <thead>
-                        <tr>
-                            <th>Order #</th>
-                            <th>User</th>
-                            <th>Device</th>
-                            <th>Product</th>
-                            <th>Status</th>
-                            <th>Total</th>
-                            <th>Provider</th>
-                            <th>Created</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ordersBody">
-                        <tr><td colspan="8">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -388,6 +389,7 @@
                     '<td>' + formatCurrency(order.totalAmount) + '</td>',
                     '<td>' + escapeHtml(order.paymentProvider) + '</td>',
                     '<td>' + formatDate(order.createdAt) + '</td>',
+                    '<td>' + formatDate(order.expiresAt) + '</td>',
                     '</tr>'
                 ].join('');
             }).join('');

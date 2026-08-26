@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS orders (
     stripe_session_id VARCHAR(255),
     stripe_payment_status VARCHAR(50),
     failure_reason VARCHAR(255),
+    expires_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_orders_number (order_number),
