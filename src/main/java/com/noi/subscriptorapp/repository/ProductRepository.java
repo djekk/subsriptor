@@ -10,6 +10,7 @@ import java.util.Optional;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByActiveTrueOrderBySortOrderAsc();
+    List<Product> findAllByOrderBySortOrderAsc();
     Optional<Product> findByCode(String code);
     boolean existsByCode(String code);
 }

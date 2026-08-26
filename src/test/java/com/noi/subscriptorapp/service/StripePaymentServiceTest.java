@@ -52,7 +52,7 @@ class StripePaymentServiceTest {
         LocalDateTime olderCreatedAt = LocalDateTime.of(2026, 1, 1, 10, 0, 0);
         LocalDateTime latestCreatedAt = LocalDateTime.of(2026, 8, 24, 9, 0, 0);
         Order olderOrder = paidSubscription("SUBSCRIPTION_6M", olderCreatedAt);
-        Order latestOrder = paidSubscription("SUBSCRIPTION_1Y", latestCreatedAt);
+        Order latestOrder = paidSubscription("SUBSCRIPTION_12M", latestCreatedAt);
         when(orderService.findPaidSubscriptionsByDevice("14D84D72D632AE5C"))
                 .thenReturn(Arrays.asList(olderOrder, latestOrder));
 
@@ -70,6 +70,20 @@ class StripePaymentServiceTest {
                 + String.format("%08X", (int) expiresAtUnix);
 
         assertEquals(expectedPlainHex, toHex(decryptedPayload));
+    }
+
+    @Test
+    void supportsLegacyYearCodeForSubscriptionDuration() {
+        LocalDateTime createdAt = LocalDateTime.of(2026, 8, 24, 9, 0, 0);
+        Order order = paidSubscription("SUBSCRIPTION_1Y", createdAt);
+        when(orderService.findPaidSubscriptionsByDevice("14D84D72D632AE5C"))
+                .thenReturn(Collections.singletonList(order));
+
+        StripePaymentService.SubscriptionProtocolResponse response =
+                stripePaymentService.checkSubscriptionByDevice("33D64B41C794CD8CA6436CB2C53C035F");
+
+        assertTrue(response.isFound());
+        assertEquals("14D84D72D632AE5C", response.getDeviceNumber());
     }
 
     @Test

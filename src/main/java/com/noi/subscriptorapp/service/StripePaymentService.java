@@ -337,13 +337,19 @@ public class StripePaymentService {
     }
 
     private int resolveSubscriptionMonths(String productCode) {
-        if ("SUBSCRIPTION_6M".equalsIgnoreCase(productCode)) {
-            return 6;
+        if (productCode == null || productCode.trim().isEmpty()) {
+            return 0;
         }
-        if ("SUBSCRIPTION_1Y".equalsIgnoreCase(productCode)) {
-            return 12;
+
+        String normalizedCode = productCode.trim();
+        Matcher matcher = Pattern.compile("(?i)^SUBSCRIPTION_(\\d+)([MY])$").matcher(normalizedCode);
+        if (!matcher.matches()) {
+            return 0;
         }
-        return 0;
+
+        int amount = Integer.parseInt(matcher.group(1));
+        String unit = matcher.group(2).toUpperCase(Locale.ROOT);
+        return "Y".equals(unit) ? amount * 12 : amount;
     }
 
     private void verifyWebhookSignature(String payload, String signatureHeader) throws Exception {

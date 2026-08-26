@@ -29,6 +29,96 @@
             background: #f9fafb;
             font-weight: 600;
         }
+        .product-form {
+            background: #fff;
+            border-radius: 10px;
+            padding: 18px;
+            margin-top: 16px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+        }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 14px;
+        }
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .field-group-wide {
+            grid-column: 1 / -1;
+        }
+        .field-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+        }
+        .field-group input,
+        .field-group textarea,
+        .field-group select {
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 9px 10px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .checkbox-group {
+            justify-content: flex-end;
+            align-items: flex-start;
+            padding-top: 24px;
+        }
+        .checkbox-group input {
+            width: 18px;
+            height: 18px;
+        }
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+        .secondary-button,
+        .product-form button,
+        .product-delete-btn,
+        .product-edit-btn {
+            border: none;
+            border-radius: 8px;
+            padding: 9px 14px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .product-form button {
+            background: #2563eb;
+            color: white;
+        }
+        .secondary-button {
+            background: #e5e7eb;
+            color: #111827;
+        }
+        .product-delete-btn {
+            background: #ef4444;
+            color: white;
+            margin-left: 8px;
+        }
+        .product-edit-btn {
+            background: #f59e0b;
+            color: white;
+        }
+        .product-status-pill {
+            display: inline-block;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .product-status-active {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .product-status-inactive {
+            background: #fee2e2;
+            color: #991b1b;
+        }
     </style>
 </head>
 <body>
@@ -43,7 +133,75 @@
         </div>
 
         <div class="content">
-            <h2>Orders</h2>
+            <h2>Products</h2>
+            <div id="productMessage" class="message" style="display:none;"></div>
+            <form id="productForm" class="product-form">
+                <input type="hidden" id="productId" name="productId">
+                <div class="product-grid">
+                    <div class="field-group">
+                        <label for="productCode">Code</label>
+                        <input id="productCode" name="code" type="text" required>
+                    </div>
+                    <div class="field-group">
+                        <label for="productName">Name</label>
+                        <input id="productName" name="name" type="text" required>
+                    </div>
+                    <div class="field-group">
+                        <label for="productType">Type</label>
+                        <select id="productType" name="productType" required>
+                            <option value="SUBSCRIPTION">SUBSCRIPTION</option>
+                            <option value="TOKEN">TOKEN</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label for="productVariant">Variant</label>
+                        <input id="productVariant" name="variant" type="text">
+                    </div>
+                    <div class="field-group">
+                        <label for="productPrice">Price</label>
+                        <input id="productPrice" name="price" type="number" min="0" step="0.01" required>
+                    </div>
+                    <div class="field-group">
+                        <label for="productSortOrder">Sort Order</label>
+                        <input id="productSortOrder" name="sortOrder" type="number" min="0" step="1" value="0">
+                    </div>
+                    <div class="field-group field-group-wide">
+                        <label for="productDescription">Description</label>
+                        <textarea id="productDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="field-group checkbox-group">
+                        <label for="productActive">Active</label>
+                        <input id="productActive" name="active" type="checkbox" checked>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="saveProductBtn">Add Product</button>
+                    <button type="button" id="cancelProductBtn" class="secondary-button" style="display:none;">Cancel</button>
+                </div>
+            </form>
+
+            <div class="orders-wrap" style="margin-top: 28px;">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Code</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Variant</th>
+                            <th>Price</th>
+                            <th>Order</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsBody">
+                        <tr><td colspan="9">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 style="margin-top: 32px;">Orders</h2>
             <div id="adminMessage" class="message" style="display:none;"></div>
             <div class="orders-wrap">
                 <table class="orders-table">
@@ -85,6 +243,13 @@
             box.textContent = text;
         }
 
+        function showProductMessage(text, type) {
+            var box = document.getElementById('productMessage');
+            box.style.display = 'block';
+            box.className = 'message ' + (type || '');
+            box.textContent = text;
+        }
+
         function formatCurrency(value) {
             return '$' + Number(value || 0).toFixed(2);
         }
@@ -96,13 +261,50 @@
             return new Date(value).toLocaleString();
         }
 
-        async function loadAdminOrders() {
+        function clearProductForm() {
+            document.getElementById('productForm').reset();
+            document.getElementById('productId').value = '';
+            document.getElementById('productActive').checked = true;
+            document.getElementById('productSortOrder').value = 0;
+            document.getElementById('saveProductBtn').textContent = 'Add Product';
+            document.getElementById('cancelProductBtn').style.display = 'none';
+        }
+
+        function populateProductForm(product) {
+            document.getElementById('productId').value = product.id || '';
+            document.getElementById('productCode').value = product.code || '';
+            document.getElementById('productName').value = product.name || '';
+            document.getElementById('productType').value = product.productType || 'SUBSCRIPTION';
+            document.getElementById('productVariant').value = product.variant || '';
+            document.getElementById('productDescription').value = product.description || '';
+            document.getElementById('productPrice').value = product.price || '';
+            document.getElementById('productSortOrder').value = product.sortOrder || 0;
+            document.getElementById('productActive').checked = product.active !== false;
+            document.getElementById('saveProductBtn').textContent = 'Update Product';
+            document.getElementById('cancelProductBtn').style.display = 'inline-block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function getProductPayload() {
+            return {
+                code: document.getElementById('productCode').value.trim(),
+                name: document.getElementById('productName').value.trim(),
+                productType: document.getElementById('productType').value,
+                variant: document.getElementById('productVariant').value.trim() || null,
+                description: document.getElementById('productDescription').value.trim() || null,
+                price: Number(document.getElementById('productPrice').value),
+                sortOrder: Number(document.getElementById('productSortOrder').value || 0),
+                active: document.getElementById('productActive').checked
+            };
+        }
+
+        async function ensureAdminSession() {
             const sessionResp = await fetch('/api/auth/check-session');
             const sessionResult = await sessionResp.json();
 
             if (!sessionResp.ok || !sessionResult.success) {
                 window.location.href = '/login';
-                return;
+                return null;
             }
 
             const sessionData = sessionResult.data && typeof sessionResult.data === 'object'
@@ -114,9 +316,53 @@
                 setTimeout(function () {
                     window.location.href = '/dashboard';
                 }, 1200);
+                return null;
+            }
+
+            const usernameSpan = document.getElementById('usernameSpan');
+            if (usernameSpan) {
+                usernameSpan.textContent = sessionData.username || 'Admin';
+            }
+            return sessionData;
+        }
+
+        async function loadAdminProducts() {
+            const response = await fetch('/api/admin/products');
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'Unable to load products');
+            }
+
+            const products = Array.isArray(result.data) ? result.data : [];
+            window.adminProducts = products;
+            const tbody = document.getElementById('productsBody');
+            if (products.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9">No products found.</td></tr>';
                 return;
             }
 
+            tbody.innerHTML = products.map(function (product) {
+                return [
+                    '<tr>',
+                    '<td>' + escapeHtml(product.id) + '</td>',
+                    '<td>' + escapeHtml(product.code) + '</td>',
+                    '<td>' + escapeHtml(product.name) + '</td>',
+                    '<td>' + escapeHtml(product.productType) + '</td>',
+                    '<td>' + escapeHtml(product.variant || '-') + '</td>',
+                    '<td>' + formatCurrency(product.price) + '</td>',
+                    '<td>' + escapeHtml(product.sortOrder || 0) + '</td>',
+                    '<td><span class="product-status-pill ' + (product.active === false ? 'product-status-inactive' : 'product-status-active') + '">' + (product.active === false ? 'Inactive' : 'Active') + '</span></td>',
+                    '<td>' +
+                    '<button type="button" class="product-edit-btn" data-id="' + escapeHtml(product.id) + '">Edit</button>' +
+                    '<button type="button" class="product-delete-btn" data-id="' + escapeHtml(product.id) + '">Delete</button>' +
+                    '</td>',
+                    '</tr>'
+                ].join('');
+            }).join('');
+        }
+
+        async function loadAdminOrders() {
             const response = await fetch('/api/admin/orders');
             const result = await response.json();
 
@@ -147,9 +393,94 @@
             }).join('');
         }
 
-        loadAdminOrders().catch(function (error) {
+        async function initializeAdminPage() {
+            const session = await ensureAdminSession();
+            if (!session) {
+                return;
+            }
+
+            try {
+                await Promise.all([loadAdminOrders(), loadAdminProducts()]);
+            } catch (error) {
+                showMessage(error.message, 'error');
+                document.getElementById('ordersBody').innerHTML = '<tr><td colspan="8">Unable to load orders.</td></tr>';
+                document.getElementById('productsBody').innerHTML = '<tr><td colspan="9">Unable to load products.</td></tr>';
+            }
+        }
+
+        document.getElementById('productForm').addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const productId = document.getElementById('productId').value;
+            const payload = getProductPayload();
+            const endpoint = productId ? '/api/admin/products/' + productId : '/api/admin/products';
+            const method = productId ? 'PUT' : 'POST';
+
+            const response = await fetch(endpoint, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                showProductMessage(result.message || 'Unable to save product.', 'error');
+                return;
+            }
+
+            showProductMessage(productId ? 'Product updated successfully.' : 'Product added successfully.', 'success');
+            clearProductForm();
+            await loadAdminProducts();
+        });
+
+        document.getElementById('cancelProductBtn').addEventListener('click', function () {
+            clearProductForm();
+            showProductMessage('Product form reset.', 'success');
+        });
+
+        document.addEventListener('click', async function (event) {
+            const editButton = event.target.closest('.product-edit-btn');
+            if (editButton) {
+                const selectedProduct = (window.adminProducts || []).find(function (product) {
+                    return Number(product.id) === Number(editButton.dataset.id);
+                });
+                if (selectedProduct) {
+                    populateProductForm(selectedProduct);
+                }
+                return;
+            }
+
+            const deleteButton = event.target.closest('.product-delete-btn');
+            if (!deleteButton) {
+                return;
+            }
+
+            const productId = deleteButton.dataset.id;
+            if (!productId || !confirm('Delete this product?')) {
+                return;
+            }
+
+            const response = await fetch('/api/admin/products/' + productId, {
+                method: 'DELETE'
+            });
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                showProductMessage(result.message || 'Unable to delete product.', 'error');
+                return;
+            }
+
+            showProductMessage('Product deleted successfully.', 'success');
+            clearProductForm();
+            await loadAdminProducts();
+        });
+
+        initializeAdminPage().catch(function (error) {
             showMessage(error.message, 'error');
             document.getElementById('ordersBody').innerHTML = '<tr><td colspan="8">Unable to load orders.</td></tr>';
+            document.getElementById('productsBody').innerHTML = '<tr><td colspan="9">Unable to load products.</td></tr>';
         });
     </script>
 </body>
