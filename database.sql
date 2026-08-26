@@ -68,7 +68,7 @@ INSERT INTO products (code, name, product_type, variant, description, price, sor
 VALUES
     ('SUBSCRIPTION_6M', 'Subscription', 'SUBSCRIPTION', 'Half of Year', 'Access for 6 months', 29.99, 1, 1),
     ('SUBSCRIPTION_1Y', 'Subscription', 'SUBSCRIPTION', 'One Year', 'Access for 12 months', 49.99, 2, 1),
-    ('TOKEN', 'Token', 'TOKEN', 'Single', 'One-time token package for quick access', 4.99, 3, 1)
+--    ('TOKEN', 'Token', 'TOKEN', 'Single', 'One-time token package for quick access', 4.99, 3, 1)
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     product_type = VALUES(product_type),
