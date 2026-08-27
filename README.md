@@ -116,6 +116,15 @@ set MAIL_PASSWORD=your-smtp-password
 
 `ORDER_CONFIRMATION_EMAIL_ADMIN_EMAILS` is optional. When set, those addresses are added as hidden recipients (BCC), so customers only see their own address. Use commas or semicolons as separators.
 
+On Windows, you can also start from the included example file:
+
+```bat
+copy env.windows.example.bat env.windows.bat
+notepad env.windows.bat
+call env.windows.bat
+java -jar target\subscriptor-1.0.0.war
+```
+
 ### 4. Run the Application
 
 Using Maven:
