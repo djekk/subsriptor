@@ -9,6 +9,9 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderConfirmationEmailService {
@@ -20,6 +23,9 @@ public class OrderConfirmationEmailService {
 
     @Value("${order.confirmation-email.from:no-reply@subscriptor.local}")
     private String fromEmail;
+
+    @Value("${order.confirmation-email.admin-emails:}")
+    private String adminEmails;
 
     public OrderConfirmationEmailService(JavaMailSender mailSender, UserRepository userRepository) {
         this.mailSender = mailSender;
@@ -62,6 +68,10 @@ public class OrderConfirmationEmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
         message.setTo(email.trim());
+        String[] hiddenAdminRecipients = resolveAdminRecipients();
+        if (hiddenAdminRecipients.length > 0) {
+            message.setBcc(hiddenAdminRecipients);
+        }
         message.setSubject("Order Confirmation " + valueOrDash(order.getOrderNumber()));
         message.setText(body.toString());
         mailSender.send(message);
@@ -79,5 +89,13 @@ public class OrderConfirmationEmailService {
 
     private String valueOrDash(String value) {
         return value == null || value.trim().isEmpty() ? "-" : value.trim();
+    }
+
+    private String[] resolveAdminRecipients() {
+        List<String> recipients = Arrays.stream(adminEmails.split("[,;]"))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .collect(Collectors.toList());
+        return recipients.toArray(new String[0]);
     }
 }

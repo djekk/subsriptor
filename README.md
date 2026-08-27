@@ -107,11 +107,14 @@ To send an email receipt after successful payment, configure SMTP and enable con
 ```bash
 set ORDER_CONFIRMATION_EMAIL_ENABLED=true
 set ORDER_CONFIRMATION_EMAIL_FROM=no-reply@yourdomain.com
+set ORDER_CONFIRMATION_EMAIL_ADMIN_EMAILS=admin1@yourdomain.com;admin2@yourdomain.com
 set MAIL_HOST=smtp.yourprovider.com
 set MAIL_PORT=587
 set MAIL_USERNAME=your-smtp-user
 set MAIL_PASSWORD=your-smtp-password
 ```
+
+`ORDER_CONFIRMATION_EMAIL_ADMIN_EMAILS` is optional. When set, those addresses are added as hidden recipients (BCC), so customers only see their own address. Use commas or semicolons as separators.
 
 ### 4. Run the Application
 

@@ -39,6 +39,7 @@ order:
   confirmation-email:
     enabled: ${ORDER_CONFIRMATION_EMAIL_ENABLED:false}
     from: ${ORDER_CONFIRMATION_EMAIL_FROM:no-reply@subscriptor.local}
+    admin-emails: ${ORDER_CONFIRMATION_EMAIL_ADMIN_EMAILS:}
 
 subscription-check:
   request-aes-key: ${SUBSCRIPTION_CHECK_REQUEST_AES_KEY:1CFA7B20EE3D9B48227DBAA6739AE044}
