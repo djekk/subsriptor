@@ -1,25 +1,14 @@
-@echo off
-rem Copy this file, replace placeholder values, then run it with: call env.windows.example.bat
+@echo on
+setlocal
 
-set SUBSCRIPTOR_HOST=http://localhost:8080
+rem Run this file from an Administrator Command Prompt to save values to the machine environment.
+rem It writes persistent system-level environment variables using PowerShell,
+rem because setx truncates values containing '&' in JDBC URLs.
+rem Open a new Command Prompt after running it.
 
-rem Stripe
-set STRIPE_SECRET_KEY=your-stripe-secret-key
-set STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Environment]::SetEnvironmentVariable('DB_URL','jdbc:mysql://localhost:3306/login_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true','Machine'); [Environment]::SetEnvironmentVariable('DB_USERNAME','root','Machine'); [Environment]::SetEnvironmentVariable('DB_PASSWORD','root','Machine'); [Environment]::SetEnvironmentVariable('SUBSCRIPTOR_HOST','http://localhost:8080','Machine'); [Environment]::SetEnvironmentVariable('STRIPE_SECRET_KEY','YOUR_STRIPE_TEST_SECRET_KEY','Machine'); [Environment]::SetEnvironmentVariable('STRIPE_WEBHOOK_SECRET','kaka','Machine'); [Environment]::SetEnvironmentVariable('ORDER_CONFIRMATION_EMAIL_ENABLED','true','Machine'); [Environment]::SetEnvironmentVariable('ORDER_CONFIRMATION_EMAIL_FROM','no-reply@domain.com','Machine'); [Environment]::SetEnvironmentVariable('ORDER_CONFIRMATION_EMAIL_ADMIN_EMAILS','djekk28@gmail.com','Machine'); [Environment]::SetEnvironmentVariable('MAIL_HOST','smtp.gmail.com','Machine'); [Environment]::SetEnvironmentVariable('MAIL_PORT','587','Machine'); [Environment]::SetEnvironmentVariable('MAIL_USERNAME','djekk28@gmail.com','Machine'); [Environment]::SetEnvironmentVariable('MAIL_PASSWORD','zbbn jqmo ixhu bflo','Machine'); [Environment]::SetEnvironmentVariable('MAIL_SMTP_AUTH','true','Machine'); [Environment]::SetEnvironmentVariable('MAIL_SMTP_STARTTLS_ENABLE','true','Machine')"
 
-rem Order confirmation emails
-set ORDER_CONFIRMATION_EMAIL_ENABLED=true
-set ORDER_CONFIRMATION_EMAIL_FROM=no-reply@yourdomain.com
-set ORDER_CONFIRMATION_EMAIL_ADMIN_EMAILS=admin1@yourdomain.com;admin2@yourdomain.com
-
-rem SMTP
-set MAIL_HOST=smtp.yourprovider.com
-set MAIL_PORT=587
-set MAIL_USERNAME=your-smtp-user
-set MAIL_PASSWORD=your-smtp-password
-set MAIL_SMTP_AUTH=true
-set MAIL_SMTP_STARTTLS_ENABLE=true
-
-rem Optional: override only if you do not want the defaults from application.yml
-rem set SUBSCRIPTION_CHECK_REQUEST_AES_KEY=1CFA7B20EE3D9B48227DBAA6739AE044
-rem set SUBSCRIPTION_CHECK_RESPONSE_AES_KEY=DE0216CEF066E18B5AC877A43E982EF6
+echo.
+echo Machine environment variables were saved.
+echo Open a new Command Prompt before running the application.
+pause

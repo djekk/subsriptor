@@ -77,16 +77,32 @@ USE login_db;
 
 ### 2. Configure Database Connection
 
-Edit `src/main/resources/application.yml` and update the database credentials:
+The app reads database settings from environment variables so credentials do not need to be committed into `application.yml`:
 
 ```yaml
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/login_db?useSSL=false&serverTimezone=UTC
-    username: root          # Your MySQL username
-    password: root          # Your MySQL password
+    url: ${DB_URL:jdbc:mysql://localhost:3306/login_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 ```
+
+Examples:
+
+```bat
+set DB_URL=jdbc:mysql://localhost:3306/login_db?useSSL=false^&serverTimezone=UTC^&allowPublicKeyRetrieval=true
+set DB_USERNAME=app_user
+set DB_PASSWORD=your-password
+```
+
+```sh
+export DB_URL='jdbc:mysql://localhost:3306/login_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true'
+export DB_USERNAME='app_user'
+export DB_PASSWORD='your-password'
+```
+
+For production, create a dedicated database user instead of `root`, use a strong password, and prefer an SSL-enabled JDBC URL.
 
 ### 3. Build the Project
 
@@ -121,7 +137,8 @@ On Windows, you can also start from the included example file:
 ```bat
 copy env.windows.example.bat env.windows.bat
 notepad env.windows.bat
-call env.windows.bat
+env.windows.bat
+rem close this Command Prompt and open a new one
 java -jar target\subscriptor-1.0.0.war
 ```
 
