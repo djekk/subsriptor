@@ -21,6 +21,11 @@ public class PageController {
         return "register.html";
     }
 
+    @GetMapping("/verify-email")
+    public String verifyEmail() {
+        return "verify-email.html";
+    }
+
     @GetMapping("/dashboard")
     public String dashboard() {
         return "dashboard.html";

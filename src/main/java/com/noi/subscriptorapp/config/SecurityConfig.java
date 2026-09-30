@@ -19,7 +19,7 @@ public class SecurityConfig {
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 .and()
                 .authorizeRequests()
-                .antMatchers("/", "/login", "/register", "/dashboard", "/admin", "/payment", "/payment/success", "/payment/cancel", "/css/**", "/js/**", "/api/auth/**", "/api/products/**", "/api/payments/**", "/api/admin/**").permitAll()
+                .antMatchers("/", "/login", "/register", "/verify-email", "/dashboard", "/admin", "/payment", "/payment/success", "/payment/cancel", "/css/**", "/js/**", "/api/auth/**", "/api/products/**", "/api/payments/**", "/api/admin/**").permitAll()
                 .anyRequest().authenticated()
                 .and()
                 .formLogin().disable()

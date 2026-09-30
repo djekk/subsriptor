@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="navbar">
+            <h1>Alarm Service</h1>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/login" class="nav-link">Login</a>
+                <a href="/register" class="nav-link">Register</a>
+            </div>
+        </div>
+        <div class="form-container">
+            <div class="form-box">
+                <h2>Email Verification</h2>
+                <div id="verificationMessage" class="message">Verifying your email...</div>
+                <p style="text-align: center; margin-top: 15px;">
+                    <a href="/login">Go to login</a>
+                </p>
+            </div>
+        </div>
+    </div>
+    <script>
+        (async () => {
+            const message = document.getElementById('verificationMessage');
+            const token = new URLSearchParams(window.location.search).get('token');
+            if (!token) {
+                message.className = 'message error';
+                message.textContent = 'This verification link is missing its token.';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/verify-email?token=' + encodeURIComponent(token));
+                const result = await response.json();
+                message.className = result.success ? 'message success' : 'message error';
+                message.textContent = result.message;
+            } catch (error) {
+                message.className = 'message error';
+                message.textContent = 'Unable to verify your email. Please try again.';
+            }
+        })();
+    </script>
+</body>
+</html>

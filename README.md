@@ -116,7 +116,17 @@ Or, if you prefer to run without packaging:
 mvn clean install
 ```
 
-### Order confirmation emails (optional)
+### Email verification and order confirmation emails
+
+New accounts must verify their email before login. Configure the same SMTP settings below and set the public application URL used in verification links:
+
+```bash
+set SUBSCRIPTOR_HOST=http://localhost:8080
+```
+
+Verification links expire after 24 hours. Users can request another link from the registration flow by calling `POST /api/auth/resend-verification` with `{"email":"user@example.com"}`.
+
+To send an email receipt after successful payment, configure SMTP and enable confirmation emails:
 
 To send an email receipt after successful payment, configure SMTP and enable confirmation emails:
 

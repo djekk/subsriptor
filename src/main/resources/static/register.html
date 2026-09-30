@@ -57,6 +57,9 @@
                 </form>
 
                 <div id="registerMessage" class="message"></div>
+                <p id="resendPrompt" style="display:none; text-align: center; margin-top: 15px;">
+                    Already registered? <a href="/login">Use login</a> after verifying your email.
+                </p>
 
                 <p style="text-align: center; margin-top: 15px;">
                     Already have an account? <a href="/login">Login here</a>
@@ -94,9 +97,7 @@
                 if (result.success) {
                     messageDiv.className = 'message success';
                     messageDiv.textContent = result.message;
-                    setTimeout(() => {
-                        window.location.href = '/login';
-                    }, 2000);
+                    document.getElementById('resendPrompt').style.display = 'block';
                 } else {
                     messageDiv.className = 'message error';
                     messageDiv.textContent = result.message;

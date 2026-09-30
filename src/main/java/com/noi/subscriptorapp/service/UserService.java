@@ -32,7 +32,7 @@ public class UserService {
         user.setFirstName(firstName);
         user.setLastName(lastName);
         user.setRole("USER");
-        user.setIsActive(true);
+        user.setIsActive(false);
 
         return userRepository.save(user);
     }
@@ -40,7 +40,8 @@ public class UserService {
     public Optional<User> loginUser(String username, String password) {
         Optional<User> user = userRepository.findByUsername(username);
 
-        if (user.isPresent() && passwordEncoder.matches(password, user.get().getPassword())) {
+        if (user.isPresent() && Boolean.TRUE.equals(user.get().getIsActive())
+                && passwordEncoder.matches(password, user.get().getPassword())) {
             return user;
         }
 

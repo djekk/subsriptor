@@ -5,6 +5,7 @@ import com.noi.subscriptorapp.dto.LoginRequest;
 import com.noi.subscriptorapp.dto.RegisterRequest;
 import com.noi.subscriptorapp.model.User;
 import com.noi.subscriptorapp.service.LoginHistoryService;
+import com.noi.subscriptorapp.service.EmailVerificationService;
 import com.noi.subscriptorapp.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,9 @@ public class AuthController {
     @Autowired
     private LoginHistoryService loginHistoryService;
 
+    @Autowired
+    private EmailVerificationService emailVerificationService;
+
     @PostMapping("/register")
     public ResponseEntity<ApiResponse> register(@RequestBody RegisterRequest request) {
         try {
@@ -42,13 +46,40 @@ public class AuthController {
                     request.getFirstName(),
                     request.getLastName()
             );
+            emailVerificationService.sendVerificationEmail(user);
 
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(new ApiResponse(true, "User registered successfully", user));
+                    .body(new ApiResponse(true, "Registration successful. Check your email to verify your account."));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse(false, e.getMessage()));
         }
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<ApiResponse> verifyEmail(@RequestParam("token") String token) {
+        try {
+            emailVerificationService.verify(token);
+            return ResponseEntity.ok(new ApiResponse(true, "Email verified. You can now log in."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(false, e.getMessage()));
+        }
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<ApiResponse> resendVerification(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        if (email == null || email.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Email is required"));
+        }
+
+        Optional<User> user = userService.findByEmail(email.trim());
+        if (user.isPresent() && !Boolean.TRUE.equals(user.get().getIsActive())) {
+            emailVerificationService.sendVerificationEmail(user.get());
+        }
+        return ResponseEntity.ok(new ApiResponse(true,
+                "If the account exists and is not verified, a new verification email has been sent."));
     }
 
     @PostMapping("/login")

@@ -26,6 +26,9 @@ spring:
           starttls:
             enable: ${MAIL_SMTP_STARTTLS_ENABLE:true}
 
+email-verification:
+  base-url: ${SUBSCRIPTOR_HOST:http://localhost:8080}
+
 server:
   port: 8080
 
