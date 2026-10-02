@@ -188,3 +188,5 @@ If you encounter issues:
 
 **Application successfully compiled and packaged!** 🎉
 All you need to do is set up MySQL and run the JAR file.
+
+local end
