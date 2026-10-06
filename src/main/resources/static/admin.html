@@ -184,7 +184,6 @@
                 <button type="button" id="productsTab" class="admin-tab" role="tab" aria-selected="false" aria-controls="productsPanel" tabindex="-1">Products</button>
             </div>
             <section id="ordersPanel" class="admin-panel" role="tabpanel" aria-labelledby="ordersTab" tabindex="0">
-            <h2>Orders</h2>
             <div class="field-group orders-search">
                 <label for="ordersSearch">Search orders</label>
                 <input id="ordersSearch" type="search" placeholder="Email, device number, or order #" aria-controls="ordersBody">
@@ -218,7 +217,6 @@
             </section>
 
             <section id="productsPanel" class="admin-panel" role="tabpanel" aria-labelledby="productsTab" tabindex="0" hidden>
-            <h2>Products</h2>
             <div id="productMessage" class="message" style="display:none;"></div>
             <form id="productForm" class="product-form">
                 <input type="hidden" id="productId" name="productId">
@@ -497,7 +495,7 @@
                 return [
                     '<tr>',
                     '<td>' + escapeHtml(order.orderNumber) + '</td>',
-                    '<td>' + escapeHtml(order.username) + '<br>' + escapeHtml(order.email || '-') + '</td>',
+                    '<td>' + escapeHtml([order.firstName, order.lastName].filter(Boolean).join(' ') || '-') + '<br>' + escapeHtml(order.email || '-') + '</td>',
                     '<td>' + escapeHtml(order.deviceNumber) + '</td>',
                     '<td>' + escapeHtml(order.productCode) + ' / ' + escapeHtml(order.productVariant) + '</td>',
                     '<td>' + escapeHtml(order.status) + '</td>',

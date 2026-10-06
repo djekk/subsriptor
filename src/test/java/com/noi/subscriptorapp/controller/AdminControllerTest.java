@@ -30,6 +30,8 @@ class AdminControllerTest {
         Order anonymous = order(null, "ORD-4");
         User user = new User();
         user.setId(7L);
+        user.setFirstName("Casey");
+        user.setLastName("Jones");
         user.setEmail("customer@example.com");
         when(orderService.findAllOrdersByCreatedAtDesc())
                 .thenReturn(Arrays.asList(first, second, missingUser, anonymous));
@@ -44,8 +46,12 @@ class AdminControllerTest {
         assertEquals(4, data.size());
         assertEquals("ORD-1", data.get(0).get("orderNumber").asText());
         assertEquals("DEVICE-1", data.get(0).get("deviceNumber").asText());
+        assertEquals("Casey", data.get(0).get("firstName").asText());
+        assertEquals("Jones", data.get(0).get("lastName").asText());
         assertEquals("customer@example.com", data.get(0).get("email").asText());
         assertEquals("customer@example.com", data.get(1).get("email").asText());
+        assertTrue(data.get(2).get("firstName").isNull());
+        assertTrue(data.get(2).get("lastName").isNull());
         assertTrue(data.get(2).get("email").isNull());
         assertTrue(data.get(3).get("email").isNull());
         assertFalse(data.get(0).has("order"));

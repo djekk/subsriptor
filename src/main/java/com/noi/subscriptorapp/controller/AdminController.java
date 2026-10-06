@@ -49,7 +49,10 @@ public class AdminController {
         List<AdminOrder> adminOrders = orders.stream()
                 .map(order -> {
                     User user = users.get(order.getUserId());
-                    return new AdminOrder(order, user == null ? null : user.getEmail());
+                    return new AdminOrder(order,
+                            user == null ? null : user.getFirstName(),
+                            user == null ? null : user.getLastName(),
+                            user == null ? null : user.getEmail());
                 })
                 .collect(Collectors.toList());
         return ResponseEntity.ok(new ApiResponse(true, "Orders loaded", adminOrders));
