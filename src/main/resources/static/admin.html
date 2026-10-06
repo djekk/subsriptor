@@ -70,6 +70,10 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+        .orders-search {
+            margin-top: 16px;
+            max-width: 480px;
+        }
         .product-form {
             background: #fff;
             border-radius: 10px;
@@ -181,12 +185,17 @@
             </div>
             <section id="ordersPanel" class="admin-panel" role="tabpanel" aria-labelledby="ordersTab" tabindex="0">
             <h2>Orders</h2>
+            <div class="field-group orders-search">
+                <label for="ordersSearch">Search orders</label>
+                <input id="ordersSearch" type="search" placeholder="Email, device number, or order #" aria-controls="ordersBody">
+                <span id="ordersSearchInfo" aria-live="polite"></span>
+            </div>
             <div class="orders-wrap">
                 <table class="orders-table">
                     <thead>
                         <tr>
                             <th>Order #</th>
-                            <th>User</th>
+                            <th>User / Email</th>
                             <th>Device</th>
                             <th>Product</th>
                             <th>Status</th>
@@ -456,21 +465,31 @@
         let ordersPage = 0;
 
         function renderAdminOrders() {
-            const totalPages = Math.ceil(adminOrders.length / ordersPageSize);
+            const query = document.getElementById('ordersSearch').value.trim().toLowerCase();
+            const filteredOrders = adminOrders.filter(function (order) {
+                return [order.email, order.deviceNumber, order.orderNumber].some(function (value) {
+                    return String(value || '').toLowerCase().includes(query);
+                });
+            });
+            document.getElementById('ordersSearchInfo').textContent = query
+                ? filteredOrders.length + ' matching orders'
+                : '';
+            const totalPages = Math.ceil(filteredOrders.length / ordersPageSize);
             ordersPage = Math.max(0, Math.min(ordersPage, totalPages - 1));
             const start = ordersPage * ordersPageSize;
-            const orders = adminOrders.slice(start, start + ordersPageSize);
+            const orders = filteredOrders.slice(start, start + ordersPageSize);
             document.getElementById('ordersPagination').hidden = totalPages <= 1;
             document.getElementById('ordersPreviousBtn').disabled = ordersPage === 0;
             document.getElementById('ordersNextBtn').disabled = ordersPage >= totalPages - 1;
-            document.getElementById('ordersPageInfo').textContent = adminOrders.length === 0
+            document.getElementById('ordersPageInfo').textContent = filteredOrders.length === 0
                 ? ''
                 : 'Page ' + (ordersPage + 1) + ' of ' + totalPages +
-                    ' (' + (start + 1) + '-' + (start + orders.length) + ' of ' + adminOrders.length + ' orders)';
+                    ' (' + (start + 1) + '-' + (start + orders.length) + ' of ' + filteredOrders.length + ' orders)';
 
             const tbody = document.getElementById('ordersBody');
             if (orders.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9">No orders found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9">' +
+                    (query ? 'No matching orders found.' : 'No orders found.') + '</td></tr>';
                 return;
             }
 
@@ -478,7 +497,7 @@
                 return [
                     '<tr>',
                     '<td>' + escapeHtml(order.orderNumber) + '</td>',
-                    '<td>' + escapeHtml(order.username) + '</td>',
+                    '<td>' + escapeHtml(order.username) + '<br>' + escapeHtml(order.email || '-') + '</td>',
                     '<td>' + escapeHtml(order.deviceNumber) + '</td>',
                     '<td>' + escapeHtml(order.productCode) + ' / ' + escapeHtml(order.productVariant) + '</td>',
                     '<td>' + escapeHtml(order.status) + '</td>',
@@ -511,6 +530,11 @@
 
         document.getElementById('ordersNextBtn').addEventListener('click', function () {
             ordersPage += 1;
+            renderAdminOrders();
+        });
+
+        document.getElementById('ordersSearch').addEventListener('input', function () {
+            ordersPage = 0;
             renderAdminOrders();
         });
 

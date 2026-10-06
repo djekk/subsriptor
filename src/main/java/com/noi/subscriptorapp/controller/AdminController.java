@@ -1,8 +1,11 @@
 package com.noi.subscriptorapp.controller;
 
 import com.noi.subscriptorapp.dto.ApiResponse;
+import com.noi.subscriptorapp.dto.AdminOrder;
 import com.noi.subscriptorapp.model.Order;
 import com.noi.subscriptorapp.model.Product;
+import com.noi.subscriptorapp.model.User;
+import com.noi.subscriptorapp.repository.UserRepository;
 import com.noi.subscriptorapp.service.OrderService;
 import com.noi.subscriptorapp.service.ProductService;
 import org.springframework.http.HttpStatus;
@@ -11,16 +14,21 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
     private final OrderService orderService;
     private final ProductService productService;
+    private final UserRepository userRepository;
 
-    public AdminController(OrderService orderService, ProductService productService) {
+    public AdminController(OrderService orderService, ProductService productService, UserRepository userRepository) {
         this.orderService = orderService;
         this.productService = productService;
+        this.userRepository = userRepository;
     }
 
     @GetMapping("/orders")
@@ -31,7 +39,20 @@ public class AdminController {
         }
 
         List<Order> orders = orderService.findAllOrdersByCreatedAtDesc();
-        return ResponseEntity.ok(new ApiResponse(true, "Orders loaded", orders));
+        List<Long> userIds = orders.stream()
+                .map(Order::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Long, User> users = userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+        List<AdminOrder> adminOrders = orders.stream()
+                .map(order -> {
+                    User user = users.get(order.getUserId());
+                    return new AdminOrder(order, user == null ? null : user.getEmail());
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(new ApiResponse(true, "Orders loaded", adminOrders));
     }
 
     @GetMapping("/products")
