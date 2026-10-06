@@ -29,6 +29,20 @@
             background: #f9fafb;
             font-weight: 600;
         }
+        .orders-pagination {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .orders-pagination[hidden] {
+            display: none;
+        }
+        .orders-pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         .product-form {
             background: #fff;
             border-radius: 10px;
@@ -155,6 +169,11 @@
                     </tbody>
                 </table>
             </div>
+            <nav id="ordersPagination" class="orders-pagination" aria-label="Orders pagination" hidden>
+                <button type="button" id="ordersPreviousBtn" class="secondary-button" disabled>Previous</button>
+                <span id="ordersPageInfo" aria-live="polite"></span>
+                <button type="button" id="ordersNextBtn" class="secondary-button" disabled>Next</button>
+            </nav>
 
             <h2 style="margin-top: 32px;">Products</h2>
             <div id="productMessage" class="message" style="display:none;"></div>
@@ -363,18 +382,26 @@
             }).join('');
         }
 
-        async function loadAdminOrders() {
-            const response = await fetch('/api/admin/orders');
-            const result = await response.json();
+        const ordersPageSize = 10;
+        let adminOrders = [];
+        let ordersPage = 0;
 
-            if (!response.ok || !result.success) {
-                throw new Error(result.message || 'Unable to load orders');
-            }
+        function renderAdminOrders() {
+            const totalPages = Math.ceil(adminOrders.length / ordersPageSize);
+            ordersPage = Math.max(0, Math.min(ordersPage, totalPages - 1));
+            const start = ordersPage * ordersPageSize;
+            const orders = adminOrders.slice(start, start + ordersPageSize);
+            document.getElementById('ordersPagination').hidden = totalPages <= 1;
+            document.getElementById('ordersPreviousBtn').disabled = ordersPage === 0;
+            document.getElementById('ordersNextBtn').disabled = ordersPage >= totalPages - 1;
+            document.getElementById('ordersPageInfo').textContent = adminOrders.length === 0
+                ? ''
+                : 'Page ' + (ordersPage + 1) + ' of ' + totalPages +
+                    ' (' + (start + 1) + '-' + (start + orders.length) + ' of ' + adminOrders.length + ' orders)';
 
-            const orders = Array.isArray(result.data) ? result.data : [];
             const tbody = document.getElementById('ordersBody');
             if (orders.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8">No orders found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9">No orders found.</td></tr>';
                 return;
             }
 
@@ -395,6 +422,29 @@
             }).join('');
         }
 
+        async function loadAdminOrders() {
+            const response = await fetch('/api/admin/orders');
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'Unable to load orders');
+            }
+
+            adminOrders = Array.isArray(result.data) ? result.data : [];
+            ordersPage = 0;
+            renderAdminOrders();
+        }
+
+        document.getElementById('ordersPreviousBtn').addEventListener('click', function () {
+            ordersPage -= 1;
+            renderAdminOrders();
+        });
+
+        document.getElementById('ordersNextBtn').addEventListener('click', function () {
+            ordersPage += 1;
+            renderAdminOrders();
+        });
+
         async function initializeAdminPage() {
             const session = await ensureAdminSession();
             if (!session) {
@@ -405,7 +455,8 @@
                 await Promise.all([loadAdminOrders(), loadAdminProducts()]);
             } catch (error) {
                 showMessage(error.message, 'error');
-                document.getElementById('ordersBody').innerHTML = '<tr><td colspan="8">Unable to load orders.</td></tr>';
+                document.getElementById('ordersPagination').hidden = true;
+                document.getElementById('ordersBody').innerHTML = '<tr><td colspan="9">Unable to load orders.</td></tr>';
                 document.getElementById('productsBody').innerHTML = '<tr><td colspan="9">Unable to load products.</td></tr>';
             }
         }
@@ -481,7 +532,8 @@
 
         initializeAdminPage().catch(function (error) {
             showMessage(error.message, 'error');
-            document.getElementById('ordersBody').innerHTML = '<tr><td colspan="8">Unable to load orders.</td></tr>';
+            document.getElementById('ordersPagination').hidden = true;
+            document.getElementById('ordersBody').innerHTML = '<tr><td colspan="9">Unable to load orders.</td></tr>';
             document.getElementById('productsBody').innerHTML = '<tr><td colspan="9">Unable to load products.</td></tr>';
         });
     </script>
